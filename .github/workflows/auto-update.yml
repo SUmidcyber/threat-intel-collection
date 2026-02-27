@@ -7,6 +7,16 @@ on:
   workflow_dispatch:  # Manuel tetikleme
   push:
     branches: [ main, master ]
+    # Botun kendi yüklediği dosyalar aksiyonu tekrar tekrar tetiklemesin diye:
+    paths-ignore:
+      - 'data/**'
+      - 'iocs/**'
+      - 'yara_rules/**'
+      - 'README.md'
+
+# EKSİK OLAN KRİTİK KISIM BURASI: Bota repoya dosya yükleme (push) izni veriyoruz
+permissions:
+  contents: write
 
 jobs:
   update-threat-intel:
