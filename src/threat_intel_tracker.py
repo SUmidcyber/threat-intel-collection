@@ -23,12 +23,12 @@ class ThreatIntelCollector:
         # GitHub token (otomatik olarak Actions'tan gelir)
         self.github_token = os.environ.get('GITHUB_TOKEN')
         
-        # Telegram (opsiyonel)
+        # Telegram Anahtarları (GitHub Secrets'tan gelir)
         self.telegram_token = os.environ.get('TELEGRAM_TOKEN')
         self.telegram_chat_id = os.environ.get('TELEGRAM_CHAT_ID')
         
-        # OTX API
-        self.otx_key = os.environ.get('OTX_API_KEY', '97bc5505d91c7f5e403afacc74fb6a787b35bac76121d260cb2b9330a83a5b9f')
+        # OTX API (GitHub Secrets'tan gelir - GÜVENLİK İÇİN HARDCODE EDİLMEDİ)
+        self.otx_key = os.environ.get('OTX_API_KEY')
         
         # Veri klasörleri
         self.data_dir = Path("data")
@@ -94,6 +94,28 @@ class ThreatIntelCollector:
         
         logger.info("✅ Threat Intel Collector başlatıldı")
         logger.info(f"📊 Hafızada: {len(self.seen_iocs)} IOC, {len(self.seen_yara)} YARA")
+
+    def send_telegram_message(self, message):
+        """Telegram'a bildirim gönderir"""
+        if not self.telegram_token or not self.telegram_chat_id:
+            logger.warning("⚠️ Telegram token veya chat ID bulunamadı. Bildirim gönderilmeyecek.")
+            return
+
+        url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+        payload = {
+            "chat_id": self.telegram_chat_id,
+            "text": message,
+            "parse_mode": "HTML"
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=15)
+            if response.status_code == 200:
+                logger.info("✅ Telegram bildirimi başarıyla gönderildi.")
+            else:
+                logger.error(f"❌ Telegram bildirimi başarısız! HTTP Kodu: {response.status_code} - Hata: {response.text}")
+        except Exception as e:
+            logger.error(f"❌ Telegram servisine bağlanırken hata oluştu: {e}")
     
     def load_data(self, filename, default):
         """Veri yükle"""
@@ -408,7 +430,6 @@ class ThreatIntelCollector:
             
             yara_sources_list = "\n".join([f"- **{s['name']}**" for s in self.yara_sources if s.get('active', True)])
             
-            # BURASI DÜZELTİLDİ: Eksik kalan kapatma tırnakları (```) eklendi
             readme_content = f"""# 🛡️ Threat Intelligence Auto Collection
 
 Bu repository **otomatik olarak** her 6 saatte bir güncellenir. Yeni çıkan IOC'leri ve YARA kurallarını toplar ve düzenler.
@@ -441,15 +462,20 @@ Bu repository **otomatik olarak** her 6 saatte bir güncellenir. Yeni çıkan IO
         logger.info("🚀 Toplama süreci başlatılıyor...")
         self.stats['runs'] += 1
         
+        new_iocs_count = 0
+        new_yara_count = 0
+        
         # 1. IOC'leri topla
         iocs = self.fetch_alienvault_iocs()
-        self.save_iocs(iocs)
+        saved_iocs = self.save_iocs(iocs)
+        new_iocs_count += len(saved_iocs) if saved_iocs else 0
         
         # 2. YARA Kurallarını topla
         for source in self.yara_sources:
             if source.get('active', True):
                 rules = self.fetch_github_yara(source)
-                self.save_yara_rules(rules)
+                saved_rules = self.save_yara_rules(rules)
+                new_yara_count += len(saved_rules) if saved_rules else 0
                 
         # 3. İstatistikleri ve tracker verilerini güncelle
         self.stats['last_update'] = datetime.now().isoformat()
@@ -462,10 +488,20 @@ Bu repository **otomatik olarak** her 6 saatte bir güncellenir. Yeni çıkan IO
         self.create_monthly_archive()
         self.update_readme()
         
+        # 5. Telegram'a Özet Bildirim Gönder
+        summary_msg = (
+            f"🤖 <b>Threat Intel Bot Çalıştı</b>\n\n"
+            f"📥 <b>Yeni Eklenenler:</b>\n"
+            f"🔸 Yeni IOC: <b>{new_iocs_count}</b>\n"
+            f"🔸 Yeni YARA: <b>{new_yara_count}</b>\n\n"
+            f"📊 <b>Genel Toplam:</b>\n"
+            f"🔹 Toplam IOC: {self.stats['total_iocs']}\n"
+            f"🔹 Toplam YARA: {self.stats['total_yara']}"
+        )
+        self.send_telegram_message(summary_msg)
+        
         logger.info("🎉 Tüm işlemler başarıyla tamamlandı!")
 
-
-# BURASI EKLENDİ: Dosya çalıştırıldığında sınıfı ayağa kaldıracak tetikleyici kod
 if __name__ == "__main__":
     collector = ThreatIntelCollector()
     collector.run()
