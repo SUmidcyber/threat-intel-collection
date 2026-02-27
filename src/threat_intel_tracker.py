@@ -425,6 +425,7 @@ class ThreatIntelCollector:
             # YARA kaynaklarını listele
             yara_sources_list = "\n".join([f"- **{s['name']}**" for s in self.yara_sources if s.get('active', True)])
             
+            # DÜZELTİLMİŞ KISIM - String düzgün şekilde kapatıldı
             readme_content = f"""# 🛡️ Threat Intelligence Auto Collection
 
 Bu repository **otomatik olarak** her 6 saatte bir güncellenir. Yeni çıkan IOC'leri ve YARA kurallarını toplar ve düzenler.
