@@ -2,13 +2,11 @@ name: Threat Intelligence Auto Update
 
 on:
   schedule:
-    # Her 6 saatte bir çalış (sen uyurken bile)
+    # Her 6 saatte bir çalış
     - cron: '0 */6 * * *'
-  # Manuel tetikleme için
-  workflow_dispatch:
-  # Repo'ya push olunca da çalışsın
+  workflow_dispatch:  # Manuel tetikleme
   push:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
   update-threat-intel:
@@ -17,29 +15,39 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
     
-    - name: Install dependencies
-      run: |
-        pip install requests GitPython python-telegram-bot pyyara
-    
-    - name: Install YARA
+    - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libyara-dev
+        sudo apt-get install -y libyara-dev gcc python3-dev
+    
+    - name: Upgrade pip
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+    
+    - name: Install Python dependencies
+      run: |
+        pip install requests python-telegram-bot GitPython
+    
+    - name: Install YARA Python
+      run: |
+        pip install yara-python
+    
+    - name: Create necessary directories
+      run: |
+        mkdir -p data iocs yara_rules weekly_reports monthly_archives
     
     - name: Run Threat Intel Tracker
       env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         OTX_API_KEY: ${{ secrets.OTX_API_KEY }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         python src/threat_intel_tracker.py
     
@@ -48,5 +56,4 @@ jobs:
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git add .
-        git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Otomatik güncelleme: $(date +'%Y-%m-%d %H:%M:%S')"
-        git push
+        git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 Otomatik güncelleme: $(date +'%Y-%m-%d %H:%M:%S')" && git push)
