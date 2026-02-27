@@ -131,7 +131,6 @@ class ThreatIntelCollector:
     
     def is_new_yara(self, name, content, source):
         """Yeni YARA kuralı mı?"""
-        # Uzun içeriklerde sadece ilk 1000 karakteri hash'le
         content_preview = content[:1000] if content else ""
         hash_val = self.calculate_hash(f"{source}:{name}:{content_preview}")
         if hash_val not in self.seen_yara:
@@ -153,7 +152,6 @@ class ThreatIntelCollector:
             
             if response.status_code == 200:
                 files = response.json()
-                # Sadece .yar, .yara, .rule uzantılı dosyaları al
                 yara_files = []
                 for f in files:
                     if isinstance(f, dict) and f.get('type') == 'file' and f['name'].endswith(('.yar', '.yara', '.rule')):
@@ -162,14 +160,12 @@ class ThreatIntelCollector:
                 logger.info(f"  📂 {len(yara_files)} YARA dosyası bulundu")
                 
                 new_rules = []
-                for file in yara_files[:50]:  # Her kaynaktan max 50 dosya (rate limit için)
+                for file in yara_files[:50]:
                     try:
-                        # Dosya içeriğini al
                         content_response = requests.get(file['download_url'], timeout=30)
                         if content_response.status_code == 200:
                             content = content_response.text
                             
-                            # Yeni kural mı kontrol et
                             if self.is_new_yara(file['name'], content, source['name']):
                                 rule_info = {
                                     'source': source['name'],
@@ -204,7 +200,7 @@ class ThreatIntelCollector:
             
             url = "https://otx.alienvault.com/api/v1/pulses/subscribed"
             headers = {"X-OTX-API-KEY": self.otx_key}
-            params = {"limit": 10, "page": 1}  # Rate limit için düşük tutalım
+            params = {"limit": 10, "page": 1}
             
             logger.info("🔍 AlienVault OTX kontrol ediliyor...")
             response = requests.get(url, headers=headers, params=params, timeout=30)
@@ -217,7 +213,7 @@ class ThreatIntelCollector:
                 new_iocs = []
                 for pulse in pulses:
                     indicators = pulse.get('indicators', [])
-                    for ioc in indicators[:5]:  # Her pulstan ilk 5 IOC
+                    for ioc in indicators[:5]:
                         ioc_value = ioc.get('indicator')
                         ioc_type = ioc.get('type', 'unknown')
                         
@@ -256,9 +252,7 @@ class ThreatIntelCollector:
         saved_files = []
         for rule in rules:
             try:
-                # Dosya adını düzenle (güvenli yap)
                 safe_name = re.sub(r'[^\w\-_\.]', '_', rule['name'])
-                # Uzun isimleri kısalt
                 if len(safe_name) > 100:
                     name_part = safe_name[:50]
                     hash_part = self.calculate_hash(safe_name)[:8]
@@ -268,7 +262,6 @@ class ThreatIntelCollector:
                 
                 filepath = today_dir / safe_name
                 
-                # Header ekle
                 header = f"""// ════════════════════════════════════════════════════════
 // Kaynak    : {rule['source']}
 // Kural     : {rule['name']}
@@ -277,7 +270,6 @@ class ThreatIntelCollector:
 // ════════════════════════════════════════════════════════
 
 """
-                
                 with open(filepath, 'w', encoding='utf-8', errors='ignore') as f:
                     f.write(header + rule['content'])
                 
@@ -300,7 +292,6 @@ class ThreatIntelCollector:
         saved_files = []
         for ioc in iocs:
             try:
-                # Tip bazlı dosya ismi
                 ioc_type = ioc['type'].lower().replace(' ', '_')
                 ioc_hash = self.calculate_hash(ioc['value'])[:8]
                 filename = f"{ioc_type}_{ioc_hash}.json"
@@ -320,14 +311,12 @@ class ThreatIntelCollector:
         """Haftalık rapor oluştur"""
         today = datetime.now()
         
-        # Haftanın günü Pazartesi ise rapor oluştur
-        if today.weekday() == 0:  # Pazartesi
+        if today.weekday() == 0:
             week_num = today.strftime('%W')
             year = today.strftime('%Y')
             
             report_file = self.report_dir / f"week-{week_num}-{year}.md"
             
-            # Son haftanın istatistikleri
             week_iocs = 0
             week_yara = 0
             
@@ -341,7 +330,6 @@ class ThreatIntelCollector:
                 if yara_day_dir.exists():
                     week_yara += len(list(yara_day_dir.glob("*.yar*")))
             
-            # RAPOR İÇERİĞİ
             report = "# 📊 Haftalık Tehdit İstihbaratı Raporu\n"
             report += f"**Hafta:** {week_num} - {year}\n"
             report += f"**Tarih:** {today.strftime('%d.%m.%Y')}\n\n"
@@ -357,13 +345,12 @@ class ThreatIntelCollector:
             report += "\n```\n\n"
             report += "## 🎯 Öne Çıkan Yeni Kurallar\n"
             
-            # Son 7 günün YARA kurallarını listele
             for i in range(7):
                 date = (today - timedelta(days=i)).strftime('%Y-%m-%d')
                 yara_day_dir = self.yara_dir / date
                 if yara_day_dir.exists():
                     report += f"\n### {date}\n"
-                    yara_files = list(yara_day_dir.glob("*.yar*"))[:10]  # En fazla 10 tane
+                    yara_files = list(yara_day_dir.glob("*.yar*"))[:10]
                     for yar_file in yara_files:
                         report += f"- [{yar_file.name}](../yara_rules/{date}/{yar_file.name})\n"
             
@@ -376,7 +363,6 @@ class ThreatIntelCollector:
         """Aylık arşiv oluştur"""
         today = datetime.now()
         
-        # Ayın ilk günüyse arşivle
         if today.day == 1:
             last_month = today - timedelta(days=1)
             month = last_month.strftime('%Y-%m')
@@ -384,7 +370,6 @@ class ThreatIntelCollector:
             archive_name = self.archive_dir / f"{month}.zip"
             
             with zipfile.ZipFile(archive_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                # Geçen ayın tüm IOC ve YARA'larını arşivle
                 files_added = 0
                 for i in range(30):
                     date = (today - timedelta(days=i+1)).strftime('%Y-%m-%d')
@@ -407,7 +392,6 @@ class ThreatIntelCollector:
     def update_readme(self):
         """README.md'yi otomatik güncelle"""
         try:
-            # Son 7 günün istatistiklerini hesapla
             week_iocs = 0
             week_yara = 0
             today = datetime.now()
@@ -422,10 +406,9 @@ class ThreatIntelCollector:
                 if yara_day_dir.exists():
                     week_yara += len(list(yara_day_dir.glob("*.yar*")))
             
-            # YARA kaynaklarını listele
             yara_sources_list = "\n".join([f"- **{s['name']}**" for s in self.yara_sources if s.get('active', True)])
             
-            # DÜZELTİLMİŞ KISIM - String düzgün şekilde kapatıldı
+            # BURASI DÜZELTİLDİ: Eksik kalan kapatma tırnakları (```) eklendi
             readme_content = f"""# 🛡️ Threat Intelligence Auto Collection
 
 Bu repository **otomatik olarak** her 6 saatte bir güncellenir. Yeni çıkan IOC'leri ve YARA kurallarını toplar ve düzenler.
@@ -438,3 +421,51 @@ Bu repository **otomatik olarak** her 6 saatte bir güncellenir. Yeni çıkan IO
 - **Çalışma Sayısı:** {self.stats['runs']}
 
 ## 📁 Klasör Yapısı
+- `/iocs/`: Günlük toplanan IOC'ler
+- `/yara_rules/`: Toplanan YARA kuralları
+- `/weekly_reports/`: Otomatik oluşturulan haftalık özetler
+- `/monthly_archives/`: Zip formatında aylık yedekler
+
+## 🔍 Takip Edilen Kaynaklar
+{yara_sources_list}
+"""
+            with open("README.md", "w", encoding="utf-8") as f:
+                f.write(readme_content)
+                
+            logger.info("✅ README.md başarıyla güncellendi.")
+        except Exception as e:
+            logger.error(f"❌ README güncellenirken hata: {e}")
+
+    def run(self):
+        """Tüm toplama ve arşivleme sürecini başlatır"""
+        logger.info("🚀 Toplama süreci başlatılıyor...")
+        self.stats['runs'] += 1
+        
+        # 1. IOC'leri topla
+        iocs = self.fetch_alienvault_iocs()
+        self.save_iocs(iocs)
+        
+        # 2. YARA Kurallarını topla
+        for source in self.yara_sources:
+            if source.get('active', True):
+                rules = self.fetch_github_yara(source)
+                self.save_yara_rules(rules)
+                
+        # 3. İstatistikleri ve tracker verilerini güncelle
+        self.stats['last_update'] = datetime.now().isoformat()
+        self.save_data("stats.json", self.stats)
+        self.save_data("seen_iocs.pkl", self.seen_iocs)
+        self.save_data("seen_yara.pkl", self.seen_yara)
+        
+        # 4. Raporlama
+        self.create_weekly_report()
+        self.create_monthly_archive()
+        self.update_readme()
+        
+        logger.info("🎉 Tüm işlemler başarıyla tamamlandı!")
+
+
+# BURASI EKLENDİ: Dosya çalıştırıldığında sınıfı ayağa kaldıracak tetikleyici kod
+if __name__ == "__main__":
+    collector = ThreatIntelCollector()
+    collector.run()
