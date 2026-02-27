@@ -66,23 +66,18 @@ class ThreatIntelCollector:
                 'branch': 'master',
                 'active': True
             },
+            # InQuest ve ESET repoları yapılarını değiştirdiği için geçici olarak devre dışı
             {
                 'name': 'InQuest Awesome YARA',
                 'url': 'https://api.github.com/repos/InQuest/awesome-yara/contents/rules',
                 'branch': 'master',
-                'active': True
+                'active': False 
             },
             {
                 'name': 'ESET Malware Research',
                 'url': 'https://api.github.com/repos/eset/malware-research/contents/yara',
                 'branch': 'master',
-                'active': True
-            },
-            {
-                'name': 'CERT Polska',
-                'url': 'https://api.github.com/repos/CERT-Polska/yard/contents/yara_rules',
-                'branch': 'master',
-                'active': True
+                'active': False
             },
             {
                 'name': 'Intezer YARA',
@@ -91,7 +86,6 @@ class ThreatIntelCollector:
                 'active': True
             }
         ]
-        
         logger.info("✅ Threat Intel Collector başlatıldı")
         logger.info(f"📊 Hafızada: {len(self.seen_iocs)} IOC, {len(self.seen_yara)} YARA")
 
@@ -225,7 +219,7 @@ class ThreatIntelCollector:
             params = {"limit": 10, "page": 1}
             
             logger.info("🔍 AlienVault OTX kontrol ediliyor...")
-            response = requests.get(url, headers=headers, params=params, timeout=30)
+            response = requests.get(url, headers=headers, params=params, timeout=60)
             
             if response.status_code == 200:
                 data = response.json()
