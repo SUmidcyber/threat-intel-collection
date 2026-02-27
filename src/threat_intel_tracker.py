@@ -182,8 +182,6 @@ class ThreatIntelCollector:
                                 }
                                 new_rules.append(rule_info)
                                 logger.info(f"  ✅ Yeni: {file['name']}")
-                            # else:
-                            #     logger.info(f"  ⏭️ Zaten var: {file['name']}")
                     except Exception as e:
                         logger.error(f"  ❌ {file['name']} okunamadı: {e}")
                 
@@ -423,6 +421,9 @@ class ThreatIntelCollector:
                     week_iocs += len(list(ioc_day_dir.glob("*.json")))
                 if yara_day_dir.exists():
                     week_yara += len(list(yara_day_dir.glob("*.yar*")))
+            
+            # YARA kaynaklarını listele
+            yara_sources_list = "\n".join([f"- **{s['name']}**" for s in self.yara_sources if s.get('active', True)])
             
             readme_content = f"""# 🛡️ Threat Intelligence Auto Collection
 
