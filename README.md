@@ -6,8 +6,8 @@ Bu repository **otomatik olarak** her 6 saatte bir güncellenir. Yeni çıkan IO
 - **Toplam IOC:** 0
 - **Toplam YARA Kuralı:** 83
 - **Son 7 Gün:** +0 IOC, +83 YARA
-- **Son Güncelleme:** 2026-02-27 23:11:22
-- **Çalışma Sayısı:** 1
+- **Son Güncelleme:** 2026-02-27 23:13:05
+- **Çalışma Sayısı:** 2
 
 ## 📁 Klasör Yapısı
 - `/iocs/`: Günlük toplanan IOC'ler
