@@ -3,11 +3,11 @@
 Bu repository **otomatik olarak** her 6 saatte bir güncellenir. Yeni çıkan IOC'leri ve YARA kurallarını toplar ve düzenler.
 
 ## 📊 Güncel İstatistikler
-- **Toplam IOC:** 0
+- **Toplam IOC:** 46
 - **Toplam YARA Kuralı:** 83
-- **Son 7 Gün:** +0 IOC, +83 YARA
-- **Son Güncelleme:** 2026-02-27 23:19:16
-- **Çalışma Sayısı:** 3
+- **Son 7 Gün:** +46 IOC, +83 YARA
+- **Son Güncelleme:** 2026-02-28 01:19:30
+- **Çalışma Sayısı:** 4
 
 ## 📁 Klasör Yapısı
 - `/iocs/`: Günlük toplanan IOC'ler
